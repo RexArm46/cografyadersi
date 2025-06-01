@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>İnteraktif Coğrafya Özetleri</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f9fa; /* Açık gri arka plan */
+        }
+        .nav-button {
+            transition: all 0.3s ease;
+        }
+        .nav-button.active {
+            background-color: #007bff; /* Mavi aktif renk */
+            color: white;
+        }
+        .nav-button:hover:not(.active) {
+            background-color: #0056b3;
+            color: white;
+        }
+        .sub-nav-button {
+            transition: all 0.3s ease;
+            border-left: 3px solid transparent;
+        }
+        .sub-nav-button.active {
+            background-color: #e9ecef; /* Açık gri aktif alt navigasyon */
+            border-left-color: #007bff;
+            color: #007bff;
+            font-weight: 600;
+        }
+        .sub-nav-button:hover:not(.active) {
+            background-color: #f1f3f5; /* Çok açık gri hover */
+        }
+        .content-card {
+            background-color: white;
+            border-radius: 0.75rem; /* Daha yuvarlak köşeler */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .content-title {
+            color: #343a40; /* Koyu gri başlık */
+        }
+        .section-title-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .section-title {
+            color: #007bff; /* Mavi bölüm başlıkları */
+        }
+        .speak-button {
+            background-color: #6c757d; /* Gri */
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .speak-button:hover {
+            background-color: #5a6268;
+        }
+        .stop-speak-button {
+            background-color: #dc3545; /* Kırmızı */
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            margin-top: 1rem;
+        }
+        .stop-speak-button:hover {
+            background-color: #c82333;
+        }
+        /* Scrollbar stilleri */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+         #unitNavContainer {
+            position: sticky;
+            top: 0;
+            z-index: 20; /* Daha yüksek z-index */
+            background-color: #f8f9fa; 
+        }
+        #subTopicNavContainer {
+            position: sticky;
+            top: 76px; /* Ünite navigasyonunun yüksekliğine göre ayarlandı (yaklaşık) */
+            height: calc(100vh - 76px); 
+            overflow-y: auto;
+            z-index: 10;
+        }
+        #mainContentAreaContainer{
+            position: relative;
+        }
+         #stopSpeakButtonContainer {
+            position: sticky;
+            bottom: 1rem; /* Sayfanın altına yakın */
+            right: 1rem; /* Sağ kenara yakın */
+            z-index: 30; /* Diğer elemanların üzerinde */
+            display: flex;
+            justify-content: flex-end; /* Butonu sağa yasla */
+            padding: 0.5rem;
+        }
+
+    </style>
+</head>
+<body class="text-gray-800">
+    <div class="container mx-auto px-4 py-5 max-w-7xl">
+        <header class="mb-8 text-center">
+            <h1 class="text-4xl font-bold text-blue-600">11. Sınıf Coğrafya İnteraktif Özetler</h1>
+            <p class="text-lg text-gray-600 mt-2">Konuları kolayca keşfedin, dinleyin ve sınavlarınıza hazırlanın!</p>
+        </header>
+
+        <div id="unitNavContainer" class="flex justify-center space-x-2 sm:space-x-4 mb-6 pb-4 border-b">
+            </div>
+
+        <div class="flex flex-col md:flex-row gap-6">
+            <aside class="w-full md:w-1/3 lg:w-1/4">
+                <div id="subTopicNavContainer" class="bg-white p-4 rounded-lg shadow">
+                    <h2 id="subTopicNavTitle" class="text-xl font-semibold text-gray-700 mb-3">Alt Konular</h2>
+                    <nav id="subTopicNav" class="space-y-1">
+                        <p id="subTopicPlaceholder" class="text-gray-500">Lütfen önce bir ünite seçin.</p>
+                    </nav>
+                </div>
+            </aside>
+
+            <main id="mainContentAreaContainer" class="w-full md:w-2/3 lg:w-3/4">
+                <div id="contentArea" class="content-card p-6 min-h-[60vh]">
+                    <p id="contentPlaceholder" class="text-gray-600 text-lg">İçeriği görüntülemek için lütfen sol menüden bir alt konu seçin.</p>
+                </div>
+                 <div id="stopSpeakButtonContainer">
+                    <button id="stopSpeakButton" class="stop-speak-button hidden">Okumayı Durdur</button>
+                </div>
+            </main>
+        </div>
+
+        <footer class="mt-12 text-center text-gray-500 text-sm">
+            <p>&copy; 2025 İnteraktif Coğrafya Özetleri. Tüm hakları saklıdır.</p>
+        </footer>
+    </div>
+
+    <script>
+        const unitData = {
+            "ÜNİTE 3": {
+                title: "KÜRESEL ORTAM: BÖLGELER VE ÜLKELER",
+                pdfTitle: "ÜNİTE 3: KÜRESEL ORTAM: BÖLGELER VE ÜLKELER (PDF'teki 3. ÜNİTE)",
+                subtopics: {
+                    "3.1": {
+                        title: "İlk Uygarlıklar",
+                        pageInfo: "sayfa 152–157",
+                        kisaAciklama: "Bu alt konu, tarımın başlamasıyla yerleşik hayata geçen insanların kurduğu ilk büyük medeniyetleri ve bu medeniyetlerin coğrafi özelliklerini inceler.",
+                        anahtarKavramlar: [
+                            { term: "Uygarlık", definition: "Belirli bir coğrafyada tarım, yerleşik yaşam ve toplumsal örgütlenme gibi alanlarda gelişmiş insan topluluğudur." },
+                            { term: "Paleolitik Dönem", definition: "İnsanların avcılık ve toplayıcılıkla yaşadığı, tarım öncesi dönemdir." },
+                            { term: "Nehir Vadisi Uygarlıkları", definition: "Verimli topraklara ve su kaynaklarına sahip nehir kenarlarında kurulan ilk medeniyetlerdir (Mısır, Mezopotamya, Hint, Çin)." },
+                            { term: "Ziggurat", definition: "Sümerlerin tapınak ve depo olarak kullandığı çok katlı yapılardır." },
+                            { term: "Hiyeroglif", definition: "Mısırlıların kullandığı resim yazısıdır." }
+                        ],
+                        anaFikirlerinOzeti: "İlk uygarlıklar, tarıma elverişli nehir vadilerinde, uygun iklim koşullarında kurulmuştur. Mezopotamya, Mısır, Hint, Çin gibi medeniyetler yazı, mimari, tarım ve yönetim alanlarında önemli gelişmeler kaydetmiştir. En kritik nokta, bu uygarlıkların kurulduğu yerlerin coğrafi koşulları, gelişimlerini doğrudan etkilemiştir. Harita 3.1 (sayfa 152), ilk uygarlıkların kurulduğu yerleri gösterir; genellikle büyük nehir vadileri ve Akdeniz çevresidir.",
+                        sinavIcinIpuclari: [
+                            "– İlk uygarlıkların ortak kuruluş yerleri: verimli topraklar, su kaynakları.",
+                            "– Mezopotamya: Yazı, tekerlek, zigguratlar.",
+                            "– Mısır: Nil Nehri, piramitler, hiyeroglif.",
+                            "– Çin: Sarıırmak-Gökırmak, ipek, kağıt, pusula.",
+                            "– Hint: İndus-Ganj, kast sistemi, sıfır."
+                        ],
+                        ilerleyenKonularaBaglanti: "Bu uygarlıkların mirası, sonraki kültür bölgelerinin ve Anadolu medeniyetlerinin temelini oluşturur."
+                    },
+                    "3.2": {
+                        title: "Kültür ve Kültür Bölgeleri",
+                        pageInfo: "sayfa 158–163",
+                        kisaAciklama: "Bu alt konu, kültür kavramını, maddi ve manevi ögelerini, özelliklerini ve yeryüzündeki başlıca kültür bölgelerini tanıtır.",
+                        anahtarKavramlar: [
+                            { term: "Kültür", definition: "Bir toplumun yaşam tarzını oluşturan, nesilden nesile aktarılan maddi ve manevi değerler bütünüdür." },
+                            { term: "Maddi Kültür", definition: "Bir kültürün somut unsurlarıdır (araçlar, yapılar, giysiler)." },
+                            { term: "Manevi Kültür", definition: "Bir kültürün soyut unsurlarıdır (dil, din, gelenekler, inançlar)." },
+                            { term: "Kültür Bölgesi", definition: "Benzer kültürel özellikler gösteren coğrafi alanlardır." },
+                            { term: "Kültürel Etkileşim", definition: "Farklı kültürlerin birbirini etkilemesi ve değiştirmesidir." }
+                        ],
+                        anaFikirlerinOzeti: "Kültür, toplumların yaşam biçimidir ve maddi (araç-gereç, mesken) ve manevi (dil, din, gelenek) ögelerden oluşur; zamanla değişir ve diğer kültürlerle etkileşir. Yeryüzünde Batı, İslam, Doğu, Slav-Rus, Afrika gibi başlıca kültür bölgeleri bulunur. Şema 3.1 (sayfa 159) kültürün maddi ve manevi ögelerini, Harita 3.2 (sayfa 159) ise başlıca kültür bölgelerinin dağılımını gösterir. En kritik nokta, her kültür bölgesinin kendine özgü coğrafi ve tarihsel koşullarda şekillenmiş olmasıdır.",
+                        sinavIcinIpuclari: [
+                            "– Kültürün maddi ve manevi ögelerini ayırt edebilme.",
+                            "– Başlıca kültür bölgeleri: Batı, İslam, Doğu, Slav-Rus, Afrika.",
+                            "– İslam Kültürü: Orta Doğu'da doğmuş, Arabistan Yarımadası ocaklıdır.",
+                            "– Doğu Kültürü: Çin, Hint, Japonya gibi alt kültürleri içerir.",
+                            "– Batı Kültürü: Avrupa ve Amerika'yı kapsar, coğrafi keşiflerle yayılmıştır."
+                        ],
+                        ilerleyenKonularaBaglanti: "Kültür bölgeleri bilgisi, Türk kültürünün yayılışını ve Anadolu'nun kültürel zenginliğini anlamada önemlidir."
+                    },
+                    "3.3": {
+                        title: "Türk Kültürünün Yayılış Alanları",
+                        pageInfo: "sayfa 164–167",
+                        kisaAciklama: "Bu alt konu, Türk kültürünün doğduğu Orta Asya coğrafyasını, bu kültürün temel maddi ve manevi özelliklerini ve göçlerle yayıldığı alanları inceler.",
+                        anahtarKavramlar: [
+                             { term: "Orta Asya", definition: "Türk kültürünün ana vatanı olan, bozkır ikliminin hakim olduğu coğrafyadır." },
+                             { term: "Bozkır Kültürü", definition: "Orta Asya'nın iklim ve bitki örtüsüne bağlı olarak gelişen, hayvancılığa dayalı yaşam tarzıdır." },
+                             { term: "Göçebe Yaşam", definition: "Hayvanlara otlak bulmak amacıyla sürekli yer değiştirme esasına dayanan yaşam biçimidir." },
+                             { term: "Yurt (Çadır)", definition: "Göçebe Türklerin kullandığı, kolay taşınabilir konuttur." },
+                             { term: "Orhun Yazıtları", definition: "Türk dilinin ve tarihinin bilinen en eski yazılı kaynaklarıdır." }
+                        ],
+                        anaFikirlerinOzeti: "Türk kültürü, Orta Asya'nın karasal ikliminde, atlı göçebe yaşam tarzıyla şekillenmiştir; temel geçim kaynağı hayvancılıktır. Çeşitli nedenlerle (kuraklık, nüfus artışı, dış baskılar) Orta Asya'dan farklı coğrafyalara göç eden Türkler, kültürlerini yaymış ve etkileşim yaşamışlardır. Harita 3.3 (sayfa 164) Türk kültürünün çıkış yerini ve yayılma yönlerini gösterir. En kritik nokta, coğrafi koşulların Türklerin yaşam biçimini ve göçlerini derinden etkilemesidir.",
+                        sinavIcinIpuclari: [
+                            "– Türk kültürünün doğuş yeri: Orta Asya.",
+                            "– Türk kültürünün maddi ögeleri: At, koyun, çadır (yurt), kilim.",
+                            "– Türk kültürünün manevi ögeleri: Aile bağları, töre, dil, İslamiyet (sonradan).",
+                            "– Türklerin göç nedenleri: İklim, otlak yetersizliği, nüfus, dış baskılar.",
+                            "– Türk kültürünün etkileşimde bulunduğu kültürler: Çin, Hint, İslam, Pers."
+                        ],
+                        ilerleyenKonularaBaglanti: "Türklerin Orta Asya'dan yayılışı, Anadolu'nun Türkleşmesi ve medeniyetler merkezi olması konusuna zemin hazırlar."
+                    },
+                     "3.4": {
+                        title: "Medeniyetler Merkezi: Anadolu",
+                        pageInfo: "sayfa 168–172",
+                        kisaAciklama: "Bu alt konu, Anadolu'nun coğrafi konumu ve zenginlikleri sayesinde tarih boyunca birçok önemli medeniyete ev sahipliği yapmasını ele alır.",
+                        anahtarKavramlar: [
+                            { term: "Anadolu", definition: "Asya ile Avrupa arasında köprü konumunda olan, verimli topraklara sahip yarımadadır." },
+                            { term: "Hititler", definition: "Anadolu'da kurulan ilk büyük merkezi krallıklardan biridir, başkenti Hattuşa'dır." },
+                            { term: "Frigler", definition: "Tarım ve hayvancılığa önem veren, sanatta ileri gitmiş bir Anadolu uygarlığıdır, başkenti Gordion'dur." },
+                            { term: "Lidyalılar", definition: "Batı Anadolu'da ticaretle uğraşan, parayı icat eden uygarlıktır, başkenti Sardes'tir." },
+                            { term: "İyonyalılar", definition: "Ege kıyılarında şehir devletleri kuran, bilim ve felsefede ilerlemiş uygarlıktır." }
+                        ],
+                        anaFikirlerinOzeti: "Anadolu, elverişli iklimi, verimli toprakları, su kaynakları ve stratejik konumu nedeniyle İlk Çağ'dan itibaren birçok uygarlığın kurulup geliştiği bir merkez olmuştur. Hititler, Frigler, Urartular, Lidyalılar ve İyonyalılar bu topraklarda önemli izler bırakmıştır. Etkinlik (sayfa 172) haritası bu uygarlıkların Anadolu'daki yaklaşık yerleşim alanlarını gösterir. En kritik nokta, Anadolu'nun coğrafi çeşitliliğinin, üzerinde kurulan medeniyetlerin de çeşitlenmesine olanak tanımasıdır.",
+                        sinavIcinIpuclari: [
+                            "– Anadolu'nun medeniyetler beşiği olma nedenleri: Coğrafi konum, iklim, verimli topraklar.",
+                            "– Hititler: Hattuşa, Kadeş Antlaşması.",
+                            "– Frigler: Gordion, tarımı koruyan yasalar, fibula.",
+                            "– Lidyalılar: Sardes, Kral Yolu, paranın icadı.",
+                            "– İyonyalılar: Efes, Milet, bilim ve felsefe."
+                        ],
+                        ilerleyenKonularaBaglanti: "Anadolu'daki bu medeniyet birikimi, daha sonraki dönemlerde bölgenin kültürel ve siyasi yapısını etkilemiştir."
+                    },
+                    "3.5": {
+                        title: "Ham Madde, Üretim ve Pazar Bölgeleri",
+                        pageInfo: "sayfa 173–179",
+                        kisaAciklama: "Bu alt konu, dünya üzerindeki ham madde kaynaklarının, sanayi üretim alanlarının ve bu ürünlerin tüketildiği pazar bölgelerinin dağılışını inceler.",
+                        anahtarKavramlar: [
+                            { term: "Ham Madde", definition: "Sanayide işlenerek ürüne dönüştürülen doğal kaynaklardır (petrol, demir, pamuk)." },
+                            { term: "Üretim Bölgesi", definition: "Ham maddelerin işlenip sanayi ürünlerine dönüştürüldüğü, fabrikaların yoğun olduğu alanlardır." },
+                            { term: "Pazar Bölgesi", definition: "Üretilen mal ve hizmetlerin tüketicilere sunulduğu ve satıldığı alanlardır." },
+                            { term: "İhracat", definition: "Bir ülkenin ürettiği malları başka ülkelere satmasıdır." },
+                            { term: "İthalat", definition: "Bir ülkenin başka ülkelerden mal almasıdır." }
+                        ],
+                        anaFikirlerinOzeti: "Dünya ekonomisi, ham madde kaynakları, bunların işlendiği üretim merkezleri ve tüketildiği pazarlar arasındaki ilişkiye dayanır. Ham madde dağılımı (petrol, kömür, tarım ürünleri) eşit değildir; sanayileşmiş ülkeler (ABD, Avrupa, Doğu Asya) önemli üretim ve pazar alanlarıdır. Tablo 3.2 (sayfa 178) en fazla ihracat ve ithalat yapan ülkeleri, Tablo 3.3 (sayfa 179) ise bazı ülkelerin ihracatında sanayi ürünlerinin payını gösterir; gelişmiş ülkelerde bu pay yüksektir. En kritik nokta, bir bölgenin hem ham madde kaynağı, hem üretim alanı hem de pazar olabilmesidir (örneğin Çin, ABD).",
+                        sinavIcinIpuclari: [
+                            "– Başlıca ham madde türleri: Enerji kaynakları, madenler, tarım ürünleri.",
+                            "– Önemli petrol ve kömür üreticileri: Ortadoğu, Rusya, ABD, Çin.",
+                            "– Başlıca sanayi üretim bölgeleri: Kuzey Amerika, Batı Avrupa, Doğu Asya.",
+                            "– Önemli pazar alanları: Nüfusu kalabalık ve alım gücü yüksek ülkeler (Çin, Hindistan, ABD, AB).",
+                            "– Gelişmiş ülkelerin ihracatında sanayi ürünlerinin payının yüksek olması."
+                        ],
+                        ilerleyenKonularaBaglanti: "Bu konu, uluslararası turizm, sanayileşmiş ülkelerin ekonomik yapıları ve uluslararası örgütlerin ekonomik faaliyetleriyle ilişkilidir."
+                    },
+                    "3.6": {
+                        title: "Uluslararası Turizm ve Etkileşim",
+                        pageInfo: "sayfa 180–183",
+                        kisaAciklama: "Bu alt konu, turizmin tanımını, tarihsel gelişimini, günümüzdeki önemini ve uluslararası alanda yarattığı çeşitli etkileşimleri ele alır.",
+                        anahtarKavramlar: [
+                            { term: "Turizm", definition: "Dinlenme, eğlenme, görme, tanıma gibi amaçlarla yapılan gezilerdir." },
+                            { term: "Kitlesel Turizm", definition: "Çok sayıda insanın turizm faaliyetlerine katılmasıdır." },
+                            { term: "UNESCO Dünya Mirası", definition: "Uluslararası öneme sahip kültürel ve doğal varlıkların korunduğu listedir." },
+                            { term: "Turizm Diplomasisi", definition: "Turizm yoluyla farklı kültürler arasında anlayış ve barışa katkı sağlama çabasıdır." },
+                            { term: "Kültürel Etkileşim", definition: "Turizm sayesinde farklı toplumların birbirlerinin kültürlerini tanıması ve etkilenmesidir." }
+                        ],
+                        anaFikirlerinOzeti: "Uluslararası turizm, insanların farklı yerleri keşfetme isteğiyle ortaya çıkmış, günümüzde küreselleşme ve artan refahla büyük bir sektör olmuştur. Turizm; ekonomik kalkınma, kültürel alışveriş ve uluslararası anlayışa katkı sağlar. Grafik 3.2 (sayfa 181) dünya genelindeki turist sayısındaki artışı gösterir, bu da etkileşimin arttığını işaret eder. En kritik nokta, turizmin ülkeler arasında hem ekonomik hem de kültürel köprüler kurarak pozitif ilişkilere zemin hazırlayabilmesidir.",
+                        sinavIcinIpuclari: [
+                            "– Turizmin ekonomik etkileri: Döviz girdisi, istihdam.",
+                            "– Turizmin kültürel etkileri: Farklı kültürlerin tanınması, ön yargıların azalması.",
+                            "– Turizmin politik etkileri: Ülkeler arası ilişkilerin yumuşaması, vize kolaylıkları.",
+                            "– UNESCO Dünya Mirası Listesi'nin turizm ve koruma açısından önemi.",
+                            "– Turizm diplomasisi kavramı ve örnekleri (ABD-Çin masa tenisi, Kore olimpiyatları)."
+                        ],
+                        ilerleyenKonularaBaglanti: "Turizm, sanayileşmiş ülkelerin ekonomileri ve uluslararası örgütlerin faaliyetleriyle de ilişkilidir."
+                    },
+                    "3.7": {
+                        title: "Sanayileşmiş Bir Ülke: Birleşik Krallık",
+                        pageInfo: "sayfa 184–187",
+                        kisaAciklama: "Bu alt konu, Sanayi Devrimi'nin doğduğu Birleşik Krallık'ın sanayileşme sürecini ve günümüzdeki sanayi yapısını inceler.",
+                        anahtarKavramlar: [
+                            { term: "Sanayi Devrimi", definition: "18. yy'da Birleşik Krallık'ta başlayan, makineleşme ve fabrikalaşmayla üretimde büyük değişim yaratan süreçtir." },
+                            { term: "Buhar Makinesi", definition: "Sanayi Devrimi'nin temel güç kaynağı olan, James Watt tarafından geliştirilen makinedir." },
+                            { term: "Sömürgecilik", definition: "Birleşik Krallık'ın sanayileşmesi için ham madde ve pazar sağlayan yayılma politikasıdır." },
+                            { term: "Dokumacılık", definition: "Sanayi Devrimi'nin başladığı ilk sektördür." },
+                            { term: "Demir-Çelik Sanayisi", definition: "Sanayi Devrimi ile birlikte gelişen önemli bir diğer sektördür." }
+                        ],
+                        anaFikirlerinOzeti: "Birleşik Krallık, zengin kömür ve demir yatakları, sömürgelerinden elde ettiği sermaye ve ham madde, bilimsel gelişmeler sayesinde Sanayi Devrimi'ne öncülük etmiştir. Dokumacılıkla başlayan devrim, buhar makinesinin icadı ve demir-çelik sanayisindeki gelişmelerle yayılmış, günümüzde de ileri sanayi kollarıyla önemli bir ekonomidir. Fotoğraf 3.35 (sayfa 185) buhar makinesini, Fotoğraf 3.36 (sayfa 185) ise ilk lokomotiflerden birini göstererek devrimin kilit unsurlarını vurgular. En kritik nokta, Sanayi Devrimi'nin sadece Birleşik Krallık'ı değil, tüm dünyayı kökten değiştirmesidir.",
+                        sinavIcinIpuclari: [
+                            "– Sanayi Devrimi'nin Birleşik Krallık'ta başlama nedenleri: Kömür-demir, sömürgeler, bilimsel ortam.",
+                            "– Öncü sektörler: Dokumacılık ve demir-çelik.",
+                            "– Önemli icatlar: İplik makineleri, buhar makinesi, lokomotif.",
+                            "– Sömürgelerin rolü: Ham madde ve pazar.",
+                            "– Günümüzdeki sanayi kolları: Demir-çelik, gemi yapımı, kimya."
+                        ],
+                        ilerleyenKonularaBaglanti: "Birleşik Krallık'ın sanayileşmesi, tarım-ekonomi ilişkileri ve uluslararası örgütler konularıyla bağlantılıdır."
+                    },
+                     "3.8": {
+                        title: "Tarım ve Ekonomi",
+                        pageInfo: "sayfa 188–195",
+                        kisaAciklama: "Bu alt konu, tarımın tarihsel gelişimini, modern (intansif) ve geleneksel (ekstansif) tarım yöntemlerini Fransa ve Afganistan örnekleriyle karşılaştırarak inceler.",
+                        anahtarKavramlar: [
+                            { term: "Ekstansif Tarım", definition: "Geleneksel, geniş alanlarda düşük verimle yapılan tarımdır." },
+                            { term: "İntansif Tarım", definition: "Modern tekniklerle birim alandan yüksek verim almayı amaçlayan tarımdır." },
+                            { term: "Yeşil Devrim", definition: "20. yüzyılda tohum ıslahı, gübre ve ilaç kullanımıyla tarımsal verimliliği artıran süreçtir." },
+                            { term: "Nadas", definition: "Toprağın bir yıl ekilip bir yıl dinlendirilmesidir." },
+                            { term: "Tarımsal Verim", definition: "Birim alandan elde edilen ürün miktarıdır." }
+                        ],
+                        anaFikirlerinOzeti: "Tarım, Neolitik Dönem'den beri temel ekonomik faaliyettir; günümüzde ekstansif (Afganistan örneği) ve intansif (Fransa örneği) yöntemlerle yapılır. Gelişmiş ülkeler modern tekniklerle yüksek verim alırken, az gelişmiş ülkeler geleneksel yöntemlerle düşük verimle yetinir. Tablo 3.4 (sayfa 190) Fransa'nın yüksek tarımsal üretimini, Fotoğraf 3.46 (sayfa 194) ise Afganistan'daki zorlu tarım koşullarını gösterir. En kritik nokta, tarımsal verimliliğin bir ülkenin gıda güvenliği ve ekonomik kalkınması için hayati önem taşımasıdır.",
+                        sinavIcinIpuclari: [
+                            "– Ekstansif tarım: Düşük teknoloji, düşük verim, iklime bağlı (Afganistan).",
+                            "– İntansif tarım: Modern teknoloji, yüksek verim, iklime az bağlı (Fransa).",
+                            "– Tarım devrimleri: Neolitik, İkinci, Üçüncü (Yeşil Devrim).",
+                            "– Fransa'da tarım: Buğday, şeker pancarı, üzüm, modern hayvancılık.",
+                            "– Afganistan'da tarım: Buğday, geleneksel hayvancılık, düşük verim."
+                        ],
+                        ilerleyenKonularaBaglanti: "Tarım, uluslararası örgütlerin (FAO) faaliyetleri ve çevre sorunları (erozyon, su kirliliği) ile ilişkilidir."
+                    },
+                    "3.9": {
+                        title: "Uluslararası Örgütler ve Türkiye",
+                        pageInfo: "sayfa 196–204",
+                        kisaAciklama: "Bu alt konu, uluslararası örgütlerin kuruluş amaçlarını, türlerini ve Türkiye'nin bu örgütlerle olan ilişkilerini ana hatlarıyla inceler.",
+                        anahtarKavramlar: [
+                            { term: "Uluslararası Örgüt", definition: "Devletlerin ortak amaçlarla kurduğu uluslararası yapılardır (BM, NATO, AB)." },
+                            { term: "Birleşmiş Milletler (BM)", definition: "Küresel barış, güvenlik ve işbirliğini amaçlayan en kapsamlı örgüttür." },
+                            { term: "NATO", definition: "Askeri bir ittifak olup, üye ülkelerin ortak savunmasını hedefler." },
+                            { term: "Avrupa Birliği (AB)", definition: "Avrupa ülkeleri arasında ekonomik ve siyasi bütünleşmeyi amaçlayan örgüttür." },
+                            { term: "OECD", definition: "Ekonomik İşbirliği ve Kalkınma Örgütü'dür, üye ülkelerin ekonomik gelişimini destekler." }
+                        ],
+                        anaFikirlerinOzeti: "Uluslararası örgütler, devletlerin ortak sorunlara çözüm bulmak ve işbirliğini geliştirmek için kurdukları yapılardır; BM, NATO, AB, OECD, İİT gibi örgütler siyasi, askeri ve ekonomik alanlarda faaliyet gösterir. Türkiye, birçok örgüte üye olmuş ve uluslararası sistemde aktif rol oynamaya çalışmıştır. Harita 3.6 (sayfa 198) NATO üyelerini, Harita 3.7 (sayfa 200) AB üyelerini gösterir. En kritik nokta, uluslararası örgütlere üyeliğin ülkelere hem haklar hem de sorumluluklar yüklemesidir.",
+                        sinavIcinIpuclari: [
+                            "– BM: Küresel barış ve güvenlik, Türkiye kurucu üye.",
+                            "– NATO: Ortak savunma, Türkiye üye.",
+                            "– AB: Ekonomik ve siyasi birlik, Türkiye aday ülke.",
+                            "– OECD: Ekonomik kalkınma, Türkiye kurucu üye.",
+                            "– İİT, KEİ, D-8: Türkiye'nin aktif rol aldığı bölgesel ve İslami işbirliği örgütleri."
+                        ],
+                        ilerleyenKonularaBaglanti: "Uluslararası örgütler, çevre sorunlarının küresel çözümleri konusunda da önemli rol oynar."
+                    }
+                }
+            },
+            "ÜNİTE 4": {
+                title: "ÇEVRE VE TOPLUM",
+                pdfTitle: "ÜNİTE 4: ÇEVRE VE TOPLUM (PDF'teki 4. ÜNİTE)",
+                subtopics: {
+                    "4.1": {
+                        title: "Çevre Sorunları ve Bu Sorunların Sebepleri",
+                        pageInfo: "sayfa 208–213",
+                        kisaAciklama: "Bu alt konu, insan faaliyetlerinin doğal çevre üzerindeki olumsuz etkileri sonucu ortaya çıkan başlıca çevre sorunlarını ve bu sorunların temel nedenlerini açıklar.",
+                        anahtarKavramlar: [
+                            { term: "Çevre Sorunu", definition: "İnsan etkinlikleri sonucu doğal dengenin bozulmasıyla ortaya çıkan olumsuz durumlardır." },
+                            { term: "Biyoçeşitlilik Azalması", definition: "Canlı türlerinin ve yaşam alanlarının yok olması veya azalmasıdır." },
+                            { term: "Toprak Erozyonu", definition: "Toprağın verimli üst kısmının su ve rüzgarla taşınmasıdır." },
+                            { term: "Hava Kirliliği", definition: "Atmosferin doğal yapısının zararlı maddelerle bozulmasıdır." },
+                            { term: "Su Kirliliği", definition: "Su kaynaklarının zararlı maddelerle kullanılamaz hale gelmesidir." }
+                        ],
+                        anaFikirlerinOzeti: "İnsanların doğaya müdahalesi Sanayi Devrimi ile artmış; biyoçeşitlilik kaybı, doğal kaynakların aşırı tüketimi, sulak alanların azalması, erozyon ve çeşitli kirlilik türleri (hava, su, toprak, ses, ışık, radyoaktif, besin) gibi ciddi çevre sorunlarına yol açmıştır. Fotoğraf 4.2 (sayfa 209) Aral Gölü'nün kurumasını, Fotoğraf 4.4 (sayfa 210) ise sanayi kaynaklı hava kirliliğini gösterir. En kritik nokta, bu sorunların temelinde hızlı nüfus artışı, sanayileşme ve plansız kentleşmenin yatmasıdır.",
+                        sinavIcinIpuclari: [
+                            "– Başlıca çevre sorunları: Biyoçeşitlilik kaybı, kaynakların aşırı kullanımı, erozyon, kirlilik.",
+                            "– Hava kirliliği kaynakları: Sanayi, ulaşım, ısınma.",
+                            "– Su kirliliği kaynakları: Evsel ve sanayi atıkları, tarımsal ilaçlar.",
+                            "– Toprak kirliliği kaynakları: Çöpler, kimyasallar, asit yağmurları.",
+                            "– Diğer kirlilik türleri: Ses, ışık, radyoaktif."
+                        ],
+                        ilerleyenKonularaBaglanti: "Bu genel çevre sorunları, sonraki konularda daha spesifik olarak (maden, enerji kullanımı etkileri vb.) incelenecektir."
+                    },
+                    "4.2": {
+                        title: "Madenlerin ve Enerji Kaynaklarının Kullanımının Çevreye Etkisi",
+                        pageInfo: "sayfa 214–216",
+                        kisaAciklama: "Bu alt konu, madenlerin ve enerji kaynaklarının çıkarılması, taşınması ve kullanılması süreçlerinde çevreye verdiği zararları inceler.",
+                        anahtarKavramlar: [
+                            { term: "Ekosistem Bozulması", definition: "Maden çıkarma alanlarında bitki ve toprak örtüsünün yok olmasıdır." },
+                            { term: "Petrol Sızıntısı", definition: "Petrol tanker kazaları veya boru hattı arızaları sonucu petrolün denize veya toprağa yayılmasıdır." },
+                            { term: "Asit Yağmurları", definition: "Fosil yakıtların yanmasıyla oluşan gazların atmosferde aside dönüşerek yağmasıdır." },
+                            { term: "Küresel Isınma", definition: "Fosil yakıt kullanımı sonucu artan sera gazlarının dünya sıcaklığını artırmasıdır." },
+                            { term: "Maden Kazaları", definition: "Maden ocaklarında meydana gelen göçük, patlama gibi can kayıplarına yol açan olaylardır." }
+                        ],
+                        anaFikirlerinOzeti: "Maden ve enerji kaynaklarının üretimi (bitki örtüsü tahribi, toz), dağıtımı (petrol sızıntıları) ve kullanımı (hava kirliliği, asit yağmurları, küresel ısınma) çevreye ciddi zararlar vermektedir. Fotoğraf 4.12 (sayfa 214) bir linyit madeninin yarattığı çukurluğu, Fotoğraf 4.14 (sayfa 215) ise Meksika Körfezi'ndeki petrol sızıntısını gösterir. En kritik nokta, bu faaliyetlerin ekosistemleri bozması, su ve hava kirliliğine yol açması ve canlı yaşamını tehdit etmesidir.",
+                        sinavIcinIpuclari: [
+                            "– Maden çıkarmanın etkileri: Bitki örtüsü kaybı, toprak erozyonu, gürültü ve toz kirliliği.",
+                            "– Petrol taşıma riskleri: Tanker kazaları, boru hattı sızıntıları, deniz kirliliği.",
+                            "– Fosil yakıt kullanımının sonuçları: Hava kirliliği, asit yağmurları, küresel ısınma.",
+                            "– Maden kazalarının (Soma, Amasra) çevresel ve insani etkileri.",
+                            "– Romanya'daki siyanür sızıntısı gibi endüstriyel kazaların ekolojik sonuçları."
+                        ],
+                        ilerleyenKonularaBaglanti: "Bu konu, yenilenemeyen kaynakların sürdürülebilir kullanımı ve alternatif enerji arayışlarının önemini vurgular."
+                    },
+                     "4.3": {
+                        title: "Yenilenemeyen Kaynakların Kullanımı",
+                        pageInfo: "sayfa 217–225",
+                        kisaAciklama: "Bu alt konu, kömür, petrol, doğal gaz gibi yenilenemeyen enerji kaynaklarının ve madenlerin sınırlı rezervlerini, kullanımının çevresel etkilerini ve alternatif enerji kaynaklarına olan ihtiyacı inceler.",
+                        anahtarKavramlar: [
+                            { term: "Yenilenemeyen Kaynaklar", definition: "Oluşumu milyonlarca yıl süren, tüketildiğinde yerine konamayan doğal kaynaklardır (fosil yakıtlar, madenler)." },
+                            { term: "Fosil Yakıtlar", definition: "Kömür, petrol ve doğal gaz gibi organik kökenli enerji kaynaklarıdır." },
+                            { term: "Rezerv Ömrü", definition: "Bir kaynağın mevcut rezervlerinin mevcut üretim hızıyla ne kadar sürede tükeneceğini gösteren süredir." },
+                            { term: "Alternatif Enerji Kaynakları", definition: "Fosil yakıtlara alternatif olarak kullanılan, genellikle yenilenebilir ve çevreye daha az zararlı kaynaklardır (güneş, rüzgar, hidroelektrik)." },
+                            { term: "Nükleer Enerji", definition: "Atom çekirdeklerinin parçalanması (fisyon) veya birleşmesi (füzyon) ile elde edilen enerjidir." }
+                        ],
+                        anaFikirlerinOzeti: "Kömür, petrol, doğal gaz gibi fosil yakıtlar ve birçok maden yenilenemeyen kaynaklardır ve rezervleri sınırlıdır; bunların aşırı tüketimi hem kaynakların tükenmesine hem de ciddi çevre sorunlarına yol açar. Grafik 4.1 (sayfa 218) 2021'de dünyada tüketilen enerji kaynaklarının dağılımını, Grafik 4.2 (sayfa 218) ise bazı enerji kaynaklarının rezerv ömrünü gösterir. En kritik nokta, bu kaynakların tükenme riski ve çevresel zararları nedeniyle yenilenebilir ve temiz enerji kaynaklarına (güneş, rüzgar, hidrojen, biyokütle, jeotermal, dalga, gelgit) yönelimin zorunlu olmasıdır.",
+                        sinavIcinIpuclari: [
+                            "– Yenilenemeyen kaynaklar: Petrol, kömür, doğal gaz, madenler.",
+                            "– Fosil yakıtların rezerv ömürlerinin sınırlı olması.",
+                            "– Petrol ve kömürün çevreye etkileri: Hava kirliliği, küresel ısınma.",
+                            "– Nükleer enerjinin avantajları (düşük maliyetli elektrik) ve dezavantajları (radyoaktif atık, kaza riski).",
+                            "– Başlıca yenilenebilir enerji kaynakları: Güneş, rüzgar, hidroelektrik, jeotermal, biyokütle, hidrojen, dalga, gelgit."
+                        ],
+                        ilerleyenKonularaBaglanti: "Yenilenemeyen kaynakların sorunları, doğal kaynakların sürdürülebilir kullanımı ve geri dönüşüm stratejilerinin önemini artırır."
+                    },
+                    "4.4": {
+                        title: "Doğal Kaynakların Kullanımı",
+                        pageInfo: "sayfa 226–231",
+                        kisaAciklama: "Bu alt konu, doğal kaynakların (toprak, su, orman) ülkelerin gelişmişlik düzeyine göre farklı kullanım şekillerini ve bu kullanımların yol açtığı çevre sorunlarını Endonezya, Norveç ve Türkiye örnekleriyle inceler.",
+                        anahtarKavramlar: [
+                            { term: "Doğal Kaynak", definition: "Doğada var olan, insanların yararlandığı unsurlardır (toprak, su, orman, maden)." },
+                            { term: "Sürdürülebilir Kullanım", definition: "Doğal kaynakları gelecek nesillerin de yararlanabileceği şekilde, tüketmeden kullanmaktır." },
+                            { term: "Ormansızlaşma", definition: "Orman alanlarının çeşitli nedenlerle (tarım, yerleşim, ağaç kesimi) yok edilmesidir." },
+                            { term: "Yanlış Arazi Kullanımı", definition: "Arazinin özelliklerine uygun olmayan şekilde kullanılması sonucu erozyon, verimsizlik gibi sorunların ortaya çıkmasıdır." },
+                            { term: "Çevre Planlaması", definition: "Doğal kaynak kullanımında çevresel etkileri en aza indirmeyi amaçlayan planlama sürecidir." }
+                        ],
+                        anaFikirlerinOzeti: "Doğal kaynakların kullanımı, ülkelerin gelişmişlik düzeyine göre değişir; az gelişmiş ülkelerde (Endonezya'da orman tahribi) kaynaklar genellikle bilinçsizce tüketilirken, gelişmiş ülkelerde (Norveç'te sürdürülebilir ormancılık) daha planlı kullanım hedeflenir. Türkiye'de de ormanların korunması ve ağaçlandırma çalışmaları yasal güvence altındadır. Tablo 4.1 (sayfa 227) bazı ülkelerdeki orman alanı değişimini gösterir; Endonezya'da azalırken Norveç ve Fransa'da artış veya stabil durum görülür. En kritik nokta, doğal kaynakların sürdürülebilir kullanımı için çevre planlamasının şart olmasıdır.",
+                        sinavIcinIpuclari: [
+                            "– Gelişmiş ve az gelişmiş ülkelerde toprak, su ve orman kullanımındaki farklar.",
+                            "– Endonezya'da palmiye yağı için ormanların yok edilmesi.",
+                            "– Norveç'te sürdürülebilir ormancılık uygulamaları.",
+                            "– Türkiye'de ormanların yasal korunması ve ağaçlandırma çalışmaları.",
+                            "– Doğal kaynak kullanımında çevre planlamasının önemi."
+                        ],
+                        ilerleyenKonularaBaglanti: "Doğal kaynakların doğru kullanımı, arazi kullanımı ve çevre sorunlarının küresel etkileri konularıyla doğrudan ilişkilidir."
+                    },
+                    "4.5": {
+                        title: "Arazi Kullanımı",
+                        pageInfo: "sayfa 232–236",
+                        kisaAciklama: "Bu alt konu, arazilerin farklı amaçlarla (yerleşim, tarım, sanayi) kullanımını, yanlış arazi kullanımının neden olduğu sorunları (deprem riski, sel, erozyon, çevre kirliliği) ve doğru arazi kullanım planlamasının önemini inceler.",
+                        anahtarKavramlar: [
+                            { term: "Arazi Kullanımı", definition: "Toprakların insanlar tarafından çeşitli amaçlarla (tarım, yerleşim, sanayi, orman) değerlendirilmesidir." },
+                            { term: "Yanlış Arazi Kullanımı", definition: "Arazinin doğal yapısına ve potansiyeline uygun olmayan şekilde kullanılmasıdır." },
+                            { term: "Arazi Yetenek Sınıflaması", definition: "Arazilerin iklim ve toprak özelliklerine göre en uygun kullanım şeklinin belirlenmesidir." },
+                            { term: "Plansız Kentleşme", definition: "Şehirlerin kontrolsüz ve altyapısız büyümesi sonucu çevre ve yaşam sorunlarının artmasıdır." },
+                            { term: "Sulak Alanların Kurutulması", definition: "Tarım alanı açmak veya sıtmayla mücadele gibi nedenlerle göl, bataklık gibi alanların kurutulmasıdır." }
+                        ],
+                        anaFikirlerinOzeti: "Araziler, yerleşim, tarım, sanayi gibi çeşitli amaçlarla kullanılır; ancak arazinin jeolojik yapısı, eğimi, su kaynakları gibi özellikleri dikkate alınmadan yapılan yanlış kullanımlar (fay hattına yerleşim, dere yatağına yapılaşma, verimli ovanın sanayiye açılması) ciddi çevre sorunlarına ve afet risklerine yol açar. Akgöl örneği (sayfa 235), kurutulan bir sulak alanın yeniden kazanılma çabalarını gösterir. En kritik nokta, arazinin doğru ve planlı kullanımının, doğal afet risklerini azaltmak ve çevreyi korumak için zorunlu olmasıdır.",
+                        sinavIcinIpuclari: [
+                            "– Yanlış arazi kullanım örnekleri: Fay hattına yerleşim, dere yatağına yapı, verimli ovanın sanayiye açılması, eğimli arazide yanlış tarım.",
+                            "– Plansız kentleşmenin sonuçları: Trafik, çevre kirliliği, altyapı yetersizliği.",
+                            "– Sulak alanların kurutulmasının ekolojik sonuçları.",
+                            "– Doğru arazi kullanımı için yapılması gerekenler: Arazi yetenek sınıflaması, planlama.",
+                            "– Akgöl örneği: Kurutulan sulak alanın ekolojik etkileri ve restorasyon çabaları."
+                        ],
+                        ilerleyenKonularaBaglanti: "Arazi kullanımı, çevre sorunlarının küresel etkileri ve doğal kaynakların sürdürülebilirliği ile yakından ilgilidir."
+                    },
+                    "4.6": {
+                        title: "Çevre Sorunlarının Küresel Etkileri",
+                        pageInfo: "sayfa 237–245",
+                        kisaAciklama: "Bu alt konu, yerel başlayan çevre sorunlarının (biyoçeşitlilik kaybı, kaynakların aşırı kullanımı, kirlilik türleri) zamanla nasıl küresel boyutlara ulaştığını ve tüm dünyayı etkilediğini açıklar.",
+                        anahtarKavramlar: [
+                            { term: "Küresel Isınma", definition: "Atmosferdeki sera gazı birikimi sonucu dünya ortalama sıcaklığının artmasıdır." },
+                            { term: "Ozon Tabakasının İncelmesi", definition: "Atmosferdeki ozon tabakasının kloroflorokarbon gibi gazlarla incelerek zararlı UV ışınlarının yeryüzüne daha fazla ulaşmasıdır." },
+                            { term: "Asit Yağmurları", definition: "Fosil yakıt kullanımıyla atmosfere salınan gazların oluşturduğu asidik yağışlardır." },
+                            { term: "Sera Etkisi", definition: "Atmosferdeki bazı gazların yeryüzünden yansıyan ısıyı tutarak gezegeni ısıtması olayıdır." },
+                            { term: "Atık Yönetimi", definition: "Atıkların azaltılması, toplanması, taşınması, geri dönüştürülmesi ve bertaraf edilmesi sürecidir." }
+                        ],
+                        anaFikirlerinOzeti: "Biyoçeşitliliğin zarar görmesi, doğal kaynakların aşırı kullanımı, sulak alanların azalması, toprak erozyonu ve özellikle hava, su, toprak, radyoaktif kirlilik gibi çevre sorunları sadece yerel değil, küresel etkilere sahiptir. Küresel ısınma, ozon tabakasının incelmesi ve asit yağmurları bu küresel etkilerin en önemlileridir. Şekil 4.1 (sayfa 240) sera etkisini, Fotoğraf 4.41 (sayfa 240) ise ozon tabakasındaki incelmeyi gösterir. En kritik nokta, bu sorunların tüm canlıları ve ekosistemleri tehdit etmesi ve çözümlerinin uluslararası işbirliği gerektirmesidir.",
+                        sinavIcinIpuclari: [
+                            "– Biyoçeşitlilik kaybının küresel sonuçları: Ekosistem dengesinin bozulması, besin zincirinin etkilenmesi.",
+                            "– Hava kirliliğinin küresel etkileri: Küresel ısınma, ozon incelmesi, asit yağmurları.",
+                            "– Su ve toprak kirliliğinin yayılma yolları ve küresel sağlık etkileri.",
+                            "– Radyoaktif kirliliğin uzun süreli ve geniş alanlı etkileri (Çernobil, Fukuşima).",
+                            "– Teknolojinin çevre sorunlarının hem nedeni hem de çözüm aracı olabilmesi."
+                        ],
+                        ilerleyenKonularaBaglanti: "Çevre sorunlarının küresel etkileri, doğal kaynakların sürdürülebilir kullanımı ve geri dönüşüm stratejilerinin aciliyetini ortaya koyar."
+                    },
+                    "4.7": {
+                        title: "Doğal Kaynakların Sürdürülebilir Kullanımı ve Geri Dönüşüm",
+                        pageInfo: "sayfa 246–249",
+                        kisaAciklama: "Bu alt konu, doğal kaynakların (su, biyoçeşitlilik, ormanlar, enerji) gelecek nesilleri de düşünerek, tüketmeden kullanılması anlamına gelen sürdürülebilir kullanım ilkelerini ve atıkların yeniden değerlendirilmesi olan geri dönüşüm stratejilerini inceler.",
+                        anahtarKavramlar: [
+                            { term: "Sürdürülebilir Kullanım", definition: "Doğal kaynakları gelecek nesillerin ihtiyaçlarını tehlikeye atmadan, dengeli bir şekilde kullanmaktır." },
+                            { term: "Geri Dönüşüm", definition: "Kullanılmış atıkların çeşitli işlemlerden geçirilerek yeniden ham madde olarak üretim sürecine kazandırılmasıdır." },
+                            { term: "Atık Yönetimi", definition: "Atıkların azaltılması, kaynağında ayrıştırılması, toplanması, taşınması, geri dönüştürülmesi ve bertaraf edilmesini içeren süreçtir." },
+                            { term: "Su Tasarrufu", definition: "Suyun bilinçli kullanılarak israfının önlenmesidir (damla sulama vb.)." },
+                            { term: "Yenilenebilir Enerji", definition: "Güneş, rüzgar gibi tükenmeyen ve çevreye daha az zararlı enerji kaynaklarıdır." }
+                        ],
+                        anaFikirlerinOzeti: "Doğal kaynakların sınırlı olması ve çevre sorunlarının artması, kaynakların sürdürülebilir kullanımını zorunlu kılmaktadır; bu, suyun tasarruflu kullanılması, biyoçeşitliliğin korunması, ormanların planlı yönetimi ve yenilenebilir enerjiye geçişi içerir. Atıkların azaltılması ve geri dönüşümü (kağıt, plastik, metal vb.) ise hem doğal kaynak tüketimini azaltır hem de çevre kirliliğini önler. Grafik 4.4 (sayfa 246) yeryüzündeki suların kullanım alanlarını göstererek tarımda su tasarrufunun önemini vurgular. En kritik nokta, sürdürülebilir yaşam için hem bireysel hem de toplumsal düzeyde bilinçli tüketim ve atık yönetimi alışkanlıklarının kazanılmasıdır.",
+                        sinavIcinIpuclari: [
+                            "– Sürdürülebilir su kullanımı: Tasarruf, arıtma, damla sulama.",
+                            "– Sürdürülebilir biyoçeşitlilik: Aşırı avlanmanın önlenmesi, doğal koruma alanları.",
+                            "– Sürdürülebilir orman kullanımı: Kesilen ağaç yerine yenisinin dikilmesi, yangın önlemleri.",
+                            "– Geri dönüşümün faydaları: Doğal kaynak korunumu, enerji tasarrufu, atık azalması.",
+                            "– Geri dönüştürülebilen başlıca atıklar: Kağıt, cam, plastik, metal, piller."
+                        ],
+                        ilerleyenKonularaBaglanti: "Bu konu, çevre bilincinin ve bireysel sorumlulukların önemini vurgulayarak ünitenin genel mesajını pekiştirir."
+                    }
+                }
+            }
+        };
+
+        const unitNavContainer = document.getElementById('unitNavContainer');
+        const subTopicNav = document.getElementById('subTopicNav');
+        const subTopicNavTitle = document.getElementById('subTopicNavTitle');
+        const subTopicPlaceholder = document.getElementById('subTopicPlaceholder');
+        const contentArea = document.getElementById('contentArea');
+        const contentPlaceholder = document.getElementById('contentPlaceholder');
+        const stopSpeakButton = document.getElementById('stopSpeakButton');
+        
+        let activeUnitButton = null;
+        let activeSubTopicButton = null;
+        let currentUtterance = null;
+
+        function speakText(textToSpeak, buttonElement) {
+            if (speechSynthesis.speaking) {
+                speechSynthesis.cancel(); // Eğer başka bir şey okunuyorsa durdur
+            }
+
+            currentUtterance = new SpeechSynthesisUtterance(textToSpeak);
+            currentUtterance.lang = 'tr-TR';
+            currentUtterance.onstart = () => {
+                stopSpeakButton.classList.remove('hidden');
+                if(buttonElement) buttonElement.textContent = "Okunuyor...";
+            };
+            currentUtterance.onend = () => {
+                stopSpeakButton.classList.add('hidden');
+                 if(buttonElement) buttonElement.textContent = "Sesli Oku";
+                currentUtterance = null;
+            };
+            currentUtterance.onerror = (event) => {
+                console.error('SpeechSynthesisUtterance.onerror', event);
+                stopSpeakButton.classList.add('hidden');
+                if(buttonElement) buttonElement.textContent = "Sesli Oku";
+                currentUtterance = null;
+            };
+            speechSynthesis.speak(currentUtterance);
+        }
+
+        stopSpeakButton.onclick = () => {
+            if (speechSynthesis.speaking) {
+                speechSynthesis.cancel();
+            }
+            // Buton metinlerini de sıfırla (opsiyonel, daha karmaşık hale getirebilir)
+            document.querySelectorAll('.speak-button').forEach(btn => btn.textContent = "Sesli Oku");
+            stopSpeakButton.classList.add('hidden');
+        };
+
+        function createSpeakButton(textGetter, idSuffix) {
+            const button = document.createElement('button');
+            button.className = 'speak-button ml-2';
+            button.textContent = 'Sesli Oku';
+            button.setAttribute('aria-label', 'Bu bölümü sesli oku');
+            button.onclick = (e) => {
+                e.stopPropagation(); // Olayın yukarıya yayılmasını engelle
+                 // Önceki tüm "Okunuyor..." butonlarını sıfırla
+                document.querySelectorAll('.speak-button').forEach(btn => {
+                    if (btn !== button) btn.textContent = "Sesli Oku";
+                });
+                const text = typeof textGetter === 'function' ? textGetter() : textGetter;
+                speakText(text, button);
+            };
+            return button;
+        }
+
+        function displaySubTopics(unitKey) {
+            const unit = unitData[unitKey];
+            subTopicNav.innerHTML = ''; 
+            subTopicNavTitle.textContent = unit.title;
+            subTopicPlaceholder.style.display = 'none';
+
+            Object.entries(unit.subtopics).forEach(([subKey, subTopic]) => {
+                const button = document.createElement('button');
+                button.className = 'sub-nav-button block w-full text-left px-3 py-2 text-gray-700 rounded-md text-sm';
+                button.textContent = `${subKey}. ${subTopic.title}`;
+                button.onclick = () => {
+                    if (speechSynthesis.speaking) {
+                        speechSynthesis.cancel();
+                        stopSpeakButton.classList.add('hidden');
+                        document.querySelectorAll('.speak-button').forEach(btn => btn.textContent = "Sesli Oku");
+                    }
+                    displayContent(unitKey, subKey);
+                    if (activeSubTopicButton) {
+                        activeSubTopicButton.classList.remove('active');
+                    }
+                    button.classList.add('active');
+                    activeSubTopicButton = button;
+                };
+                subTopicNav.appendChild(button);
+            });
+        }
+
+        function displayContent(unitKey, subKey) {
+            const subTopic = unitData[unitKey].subtopics[subKey];
+            contentPlaceholder.style.display = 'none';
+            
+            let anahtarKavramlarText = subTopic.anahtarKavramlar.map(k => `${k.term}: ${k.definition}`).join('\n');
+            let sinavIpuclariText = subTopic.sinavIcinIpuclari.map(i => i.substring(2)).join('\n');
+
+            contentArea.innerHTML = `
+                <h2 class="content-title text-3xl font-bold mb-1">${subKey}. ${subTopic.title}</h2>
+                <p class="text-sm text-gray-500 mb-6">(${subTopic.pageInfo})</p>
+
+                <div class="mb-6">
+                    <div class="section-title-container">
+                        <h3 class="section-title text-xl font-semibold">Kısa Açıklama</h3>
+                    </div>
+                    <p id="kisaAciklamaText" class="text-gray-700 leading-relaxed mt-2">${subTopic.kisaAciklama}</p>
+                </div>
+
+                <div class="mb-6">
+                     <div class="section-title-container">
+                        <h3 class="section-title text-xl font-semibold">Anahtar Kavramlar</h3>
+                    </div>
+                    <ul id="anahtarKavramlarList" class="list-none space-y-2 mt-2">
+                        ${subTopic.anahtarKavramlar.map(kavram => `<li><strong class="text-blue-600">${kavram.term}:</strong> ${kavram.definition}</li>`).join('')}
+                    </ul>
+                </div>
+
+                <div class="mb-6">
+                    <div class="section-title-container">
+                        <h3 class="section-title text-xl font-semibold">Ana Fikirlerin Özeti</h3>
+                    </div>
+                    <p id="anaFikirlerText" class="text-gray-700 leading-relaxed mt-2">${subTopic.anaFikirlerinOzeti}</p>
+                </div>
+
+                <div class="mb-6">
+                    <div class="section-title-container">
+                        <h3 class="section-title text-xl font-semibold">Sınav İçin İpucu Listesi</h3>
+                    </div>
+                    <ul id="sinavIpuclariList" class="list-disc list-inside text-gray-700 space-y-1 mt-2">
+                        ${subTopic.sinavIcinIpuclari.map(ipucu => `<li>${ipucu.substring(2)}</li>`).join('')}
+                    </ul>
+                </div>
+
+                ${subTopic.ilerleyenKonularaBaglanti ? `
+                <div class="mt-6 pt-4 border-t border-gray-200">
+                    <div class="section-title-container">
+                        <h3 class="text-lg font-semibold text-gray-600 mb-2">İlerleyen Konulara Kısa Bağlantı</h3>
+                    </div>
+                    <p id="ilerleyenKonularText" class="text-gray-600 italic mt-2">${subTopic.ilerleyenKonularaBaglanti}</p>
+                </div>` : ''}
+            `;
+
+            // Sesli Oku butonlarını ekle
+            const kisaAciklamaContainer = contentArea.querySelector('#kisaAciklamaText').previousElementSibling;
+            kisaAciklamaContainer.appendChild(createSpeakButton(() => subTopic.kisaAciklama, 'kisaAciklama'));
+            
+            const anahtarKavramlarContainer = contentArea.querySelector('#anahtarKavramlarList').previousElementSibling;
+            anahtarKavramlarContainer.appendChild(createSpeakButton(() => anahtarKavramlarText, 'anahtarKavramlar'));
+
+            const anaFikirlerContainer = contentArea.querySelector('#anaFikirlerText').previousElementSibling;
+            anaFikirlerContainer.appendChild(createSpeakButton(() => subTopic.anaFikirlerinOzeti, 'anaFikirler'));
+
+            const sinavIpuclariContainer = contentArea.querySelector('#sinavIpuclariList').previousElementSibling;
+            sinavIpuclariContainer.appendChild(createSpeakButton(() => sinavIpuclariText, 'sinavIpuclari'));
+
+            if (subTopic.ilerleyenKonularaBaglanti) {
+                const ilerleyenKonularContainer = contentArea.querySelector('#ilerleyenKonularText').previousElementSibling;
+                ilerleyenKonularContainer.appendChild(createSpeakButton(() => subTopic.ilerleyenKonularaBaglanti, 'ilerleyenKonular'));
+            }
+        }
+
+        Object.keys(unitData).forEach(unitKey => {
+            const button = document.createElement('button');
+            button.className = 'nav-button px-4 py-2 sm:px-6 sm:py-3 bg-white border border-blue-500 text-blue-500 rounded-lg shadow hover:shadow-md font-medium';
+            button.textContent = unitData[unitKey].title;
+            button.onclick = () => {
+                if (speechSynthesis.speaking) {
+                    speechSynthesis.cancel();
+                    stopSpeakButton.classList.add('hidden');
+                    document.querySelectorAll('.speak-button').forEach(btn => btn.textContent = "Sesli Oku");
+                }
+                if (activeUnitButton) {
+                    activeUnitButton.classList.remove('active');
+                    activeUnitButton.classList.remove('bg-blue-600', 'text-white');
+                    activeUnitButton.classList.add('bg-white', 'text-blue-500');
+                }
+                button.classList.add('active');
+                button.classList.remove('bg-white', 'text-blue-500');
+                button.classList.add('bg-blue-600', 'text-white');
+                activeUnitButton = button;
+                
+                displaySubTopics(unitKey);
+                contentArea.innerHTML = '<p id="contentPlaceholder" class="text-gray-600 text-lg">İçeriği görüntülemek için lütfen sol menüden bir alt konu seçin.</p>';
+                if(activeSubTopicButton) activeSubTopicButton.classList.remove('active');
+                activeSubTopicButton = null;
+            };
+            unitNavContainer.appendChild(button);
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!activeUnitButton) {
+                 subTopicPlaceholder.style.display = 'block';
+            }
+             if (!activeSubTopicButton) {
+                contentPlaceholder.style.display = 'block';
+            }
+        });
+
+    </script>
+</body>
+</html>
